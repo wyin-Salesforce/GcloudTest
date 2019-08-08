@@ -1,0 +1,112 @@
+FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu16.04 as intermediate
+
+RUN apt-get update
+RUN apt-get install -y git
+
+ARG SSH_PRIVATE_KEY
+RUN mkdir /root/.ssh/
+RUN echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa
+RUN cat /root/.ssh/id_rsa
+RUN chmod 400 /root/.ssh/id_rsa
+RUN touch /root/.ssh/known_hosts
+RUN ssh-keyscan github.com >> /root/.ssh/known_hosts
+
+RUN git clone git@github.com:MetaMind/warp-ctc.git
+RUN git clone git@github.com:MetaMind/warp-transducer.git
+RUN git clone git@github.com:MetaMind/ctcdecode.git && cd ctcdecode && git checkout pytorch1 && cd third_party && git submodule update --init --recursive
+RUN git clone git@github.com:MetaMind/SpeechRecognition.git
+
+FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu16.04
+WORKDIR /opt/warpctc
+COPY --from=intermediate /warp-ctc ./
+
+WORKDIR /opt/warptrans
+COPY --from=intermediate /warp-transducer ./
+
+WORKDIR /opt/ctcdecode
+COPY --from=intermediate /ctcdecode ./
+
+WORKDIR /opt/sctk
+COPY --from=intermediate /SpeechRecognition/SCTK ./
+
+ARG PYTHON_VERSION=3.6
+
+# binary dependencies on ubuntu
+RUN apt-get update && apt-get install -y --no-install-recommends \
+         build-essential zip unzip \
+         cmake default-jre \
+         git less htop \
+         curl \
+         vim \
+         ca-certificates \
+         libjpeg-dev \
+         libpng-dev openssh-server \
+         sox libsox-dev libsox-fmt-all \
+         zlib1g-dev automake autoconf libtool subversion libatlas3-base \
+         wget python python-dev \
+         pkg-config libprotobuf9v5 protobuf-compiler libprotobuf-dev \
+         libgoogle-perftools-dev libprotobuf9v5 \
+         build-essential libboost-all-dev cmake zlib1g-dev \
+         libbz2-dev liblzma-dev
+
+#RUN echo "deb http://ubuntu.cs.utah.edu/ubuntu artful main universe" >> /etc/apt/sources.list
+#RUN apt-get update && apt-get install -y --no-install-recommends sctk && rm -rf /var/lib/apt/lists/*
+
+# pytorch
+RUN curl -o ~/miniconda.sh -O \
+    https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh  && \
+     chmod +x ~/miniconda.sh && \
+     ~/miniconda.sh -b -p /opt/conda && \
+     rm ~/miniconda.sh && \
+     /opt/conda/bin/conda install -y python=$PYTHON_VERSION numpy pyyaml \
+     scipy ipython mkl mkl-include cython typing && \
+     /opt/conda/bin/conda clean -ya
+ENV PATH /opt/conda/bin:$PATH
+
+RUN pip install --upgrade pip
+
+RUN conda install pytorch torchvision cudatoolkit=10.0 -c pytorch
+
+## apex
+#WORKDIR /opt/apex
+#RUN git clone https://github.com/NVIDIA/apex.git && cd apex && \
+#    pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" .
+
+# python packages
+RUN pip install torchvision wget h5py tqdm visdom librosa python-levenshtein \
+    scipy cffi sentencepiece duckling word2number tensorflow tensorboardX
+
+# setencepiece
+WORKDIR /opt/sentencepiece
+RUN git clone https://github.com/google/sentencepiece.git && cd sentencepiece && mkdir build \
+    && cd build && cmake .. && make -j 32 && make install && ldconfig -v
+
+# sctk
+WORKDIR /opt/sctk
+RUN make config CFLAGS='-std=c++11' && make all -j 16 && make check && make install && make doc
+
+# ctc
+ENV CUDA_HOME=/usr/local/cuda
+WORKDIR /opt/warpctc
+RUN cd ./pytorch_binding \
+  && python setup.py bdist_wheel && python setup.py install
+
+# transducer
+WORKDIR /opt/warptrans
+RUN mkdir build; cd build && cmake .. && make -j 4 && make install && cd ../pytorch_binding \
+  && python setup.py install
+
+# ctcdecode
+WORKDIR /opt/ctcdecode
+RUN pip install .
+RUN pip install -r requirements.txt
+
+# kenlm
+RUN pip install https://github.com/kpu/kenlm/archive/master.zip
+
+WORKDIR /opt/kenlm
+RUN git clone https://github.com/kpu/kenlm.git && cd kenlm && mkdir build && cd build && cmake .. && make -j 4
+
+WORKDIR /workspace
+RUN chmod -R a+w /workspace
+ENV LANG C.UTF-8
