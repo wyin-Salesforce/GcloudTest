@@ -13,7 +13,7 @@ spec:
         claimName: sfr-home-pvc-wyin
   containers:
     - name: wyinforfun3
-      image: "gcr.io/salesforce-research-internal/image08082019v2"
+      image: "gcr.io/salesforce-research-internal/yingbo-pytorch"
       command: ["sleep", "infinity"]
       resources:
         limits:
