@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: sfr-pod-wyinv2
+  name: sfr-pod-wyin
   namespace: sfr-ns-wyin
 spec:
   restartPolicy: OnFailure
@@ -12,12 +12,12 @@ spec:
       persistentVolumeClaim:
         claimName: sfr-home-pvc-wyin
   containers:
-    - name: wyinforfun3
+    - name: wyin
       image: "gcr.io/salesforce-research-internal/yingbo-pytorch"
       command: ["sleep", "infinity"]
       resources:
         limits:
-          nvidia.com/gpu: 1
+          nvidia.com/gpu: 2
       volumeMounts:
         - name: sfr-home-pv-wyin
           mountPath: "/export/home"
