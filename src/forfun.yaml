@@ -1,0 +1,28 @@
+## username_nodot=`echo ${USER} | sed s/[.]/-/g`; sed "s/username/${username_nodot}/g" sfr-pod-username.yaml > sfr-pod-${username_nodot}.yaml
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sfr-pod-wyin
+  namespace: sfr-ns-wyin
+spec:
+  restartPolicy: OnFailure
+  volumes:
+    - name: sfr-home-pv-wyin
+      persistentVolumeClaim:
+        claimName: sfr-home-pvc-wyin
+  containers:
+    - name: wyinforfun3
+      image: "gcr.io/salesforce-research-internal/wyinforfun2.0"
+      command: ["sleep", "infinity"]
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+      volumeMounts:
+        - name: sfr-home-pv-wyin
+          mountPath: "/export/home"
+  tolerations:
+  - key: "gpu_num"
+    operator: "Equal"
+    value: "2"
+    effect: "NoSchedule"
