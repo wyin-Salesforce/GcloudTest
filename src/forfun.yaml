@@ -1,28 +1,43 @@
-## username_nodot=`echo ${USER} | sed s/[.]/-/g`; sed "s/username/${username_nodot}/g" sfr-pod-username.yaml > sfr-pod-${username_nodot}.yaml
----
+# Basic Ubuntu container with tools such as vim, git, python etc.
 apiVersion: v1
 kind: Pod
 metadata:
-  name: sfr-pod-wyin
-  namespace: sfr-ns-wyin
+ name: sfr-pod-wyin
+ namespace: sfr-ns-wyin
 spec:
-  restartPolicy: OnFailure
-  volumes:
-    - name: sfr-home-pv-wyin
-      persistentVolumeClaim:
-        claimName: sfr-home-pvc-wyin
-  containers:
-    - name: wyin
-      image: "gcr.io/salesforce-research-internal/yingbo-pytorch"
-      command: ["sleep", "infinity"]
-      resources:
-        limits:
-          nvidia.com/gpu: 1
-      volumeMounts:
-        - name: sfr-home-pv-wyin
-          mountPath: "/export/home"
-  tolerations:
-  - key: "gpu_num"
-    operator: "Equal"
-    value: "2"
-    effect: "NoSchedule"
+ restartPolicy: OnFailure
+ volumes:
+   - name: sfr-home-pv-wyin
+     persistentVolumeClaim:
+       claimName: sfr-home-pvc-wyin
+   - name: sfr-share-pv-wyin
+     persistentVolumeClaim:
+       claimName: sfr-share-pvc-wyin
+#    - emptyDir:
+#      medium: Memory
+#      name: dshm
+ affinity:
+   nodeAffinity:
+     requiredDuringSchedulingIgnoredDuringExecution:
+       nodeSelectorTerms:
+       - matchExpressions:
+         - key: sfr-node-type
+           operator: In
+           values:
+           - gpu8-512g
+ containers:
+   - name: wyin
+     image: "gcr.io/salesforce-research-internal/yingbo-pytorch"
+     command: ["sleep","infinity"]
+     volumeMounts:
+       - name: sfr-home-pv-wyin
+         mountPath: "/export/home"
+       - name: sfr-share-pv-wyin
+         mountPath: "/export/share"
+#        - name: dshm
+#          mountPath: /dev/shm
+     resources:
+       limits:
+         nvidia.com/gpu: 8
+         cpu: "63"
+         memory: 384G
