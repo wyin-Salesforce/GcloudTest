@@ -133,12 +133,12 @@ ALL_MODELS = sum(
 
 MODEL_CLASSES = {
     "bert": (BertConfig, BertForSequenceClassification, BertTokenizer),
-    "xlnet": (XLNetConfig, XLNetForSequenceClassification, XLNetTokenizer),
-    "xlm": (XLMConfig, XLMForSequenceClassification, XLMTokenizer),
+    # "xlnet": (XLNetConfig, XLNetForSequenceClassification, XLNetTokenizer),
+    # "xlm": (XLMConfig, XLMForSequenceClassification, XLMTokenizer),
     "roberta": (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer),
     "distilbert": (DistilBertConfig, DistilBertForSequenceClassification, DistilBertTokenizer),
     "albert": (AlbertConfig, AlbertForSequenceClassification, AlbertTokenizer),
-    "xlmroberta": (XLMRobertaConfig, XLMRobertaForSequenceClassification, XLMRobertaTokenizer),
+    # "xlmroberta": (XLMRobertaConfig, XLMRobertaForSequenceClassification, XLMRobertaTokenizer),
 }
 
 
