@@ -1,0 +1,40 @@
+# Basic Ubuntu container with tools such as vim, git, python etc.
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: sfr-pod-xiaodong
+ namespace: sfr-ns-xiaodong
+spec:
+ restartPolicy: OnFailure
+ volumes:
+   - name: sfr-home-pv-xiaodong
+     persistentVolumeClaim:
+       claimName: sfr-home-pvc-xiaodong
+   - name: sfr-share-pv-xiaodong
+     persistentVolumeClaim:
+       claimName: sfr-share-pvc-xiaodong
+   - emptyDir:
+       medium: Memory
+     name: dshm
+ containers:
+   - name: xiaodong
+     image: "gcr.io/salesforce-research-internal/yingbo-pytorch"
+     command: ["sleep","infinity"]
+     volumeMounts:
+       - name: sfr-home-pv-xiaodong
+         mountPath: "/export/home"
+       - name: sfr-share-pv-xiaodong
+         mountPath: "/export/share"
+       - mountPath: /dev/shm
+         name: dshm
+     resources:
+           limits:
+             nvidia.com/gpu: 8
+             cpu: "63"
+             memory: 384G
+ tolerations:
+   - key: "gpu_num"
+     operator: "Equal"
+     value: "8"
+     effect: "NoSchedule"
